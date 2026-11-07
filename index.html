@@ -60,12 +60,29 @@ h2{font-size:clamp(1.8rem,4vw,3.6rem);font-weight:800}
 .chips{display:flex;gap:1.2vw;flex-wrap:wrap;justify-content:center}
 .chips span{padding:.6em 1.4em;border-radius:999px;border:2px solid var(--c2);font-weight:700;font-size:clamp(.95rem,1.6vw,1.5rem);background:#8a5cff22}
 .quote{font-size:clamp(1.6rem,3.6vw,3.4rem);max-width:24ch;font-weight:800;line-height:1.2;background:linear-gradient(100deg,#fff,var(--c1) 60%,var(--c3));-webkit-background-clip:text;background-clip:text;color:transparent}
+.tbar{width:min(90vw,760px);height:10px;border-radius:9px;background:#ffffff14;overflow:hidden}
+.tbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--c4),var(--c3))}
+.bars{display:flex;align-items:flex-end;gap:1.6vw;height:28vh;width:min(90vw,760px);padding:4vh 2vw 0;border-bottom:2px solid #19f0ff55}
+.bars>div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end}
+.bars i{position:relative;display:block;width:100%;border-radius:10px 10px 0 0;background:linear-gradient(180deg,var(--c1),var(--c2));transform-origin:bottom;animation:grow .8s both}
+.bars i b{position:absolute;top:-1.4em;left:0;right:0;font-size:clamp(1.2rem,2.4vw,2.2rem)}
+.bars .q i{background:repeating-linear-gradient(45deg,#ffc94a55,#ffc94a55 10px,#ffc94a22 10px,#ffc94a22 20px);border:2px dashed var(--c4)}
+.bars .q b{color:var(--c4)}
+#ch-o .opt{font-size:clamp(2rem,4vw,3.6rem)}
+.opt.bad{background:linear-gradient(160deg,var(--c3),#7a1f4f);animation:shake .4s}
+#prize{display:none;flex-direction:column;align-items:center;gap:1.5vh}
+#prize .ch{font-size:clamp(5rem,12vw,10rem);animation:bounce 1s infinite alternate;filter:drop-shadow(0 0 30px #ffc94a)}
+#prize .code{font-family:Consolas,monospace;font-size:clamp(1.4rem,2.6vw,2.4rem);padding:.4em 1.2em;border:3px dashed var(--c4);border-radius:16px;color:var(--c4)}
+#cf{position:fixed;inset:0;pointer-events:none;z-index:20}
+@keyframes grow{from{transform:scaleY(0)}}
+@keyframes shake{25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+@keyframes bounce{to{transform:translateY(-18px) rotate(-6deg)}}
 @media (max-width:800px){.lab{flex-direction:column}.panel{max-width:none;width:100%}.card{flex-direction:column}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
-<canvas id="bg"></canvas><div class="vig"></div>
+<canvas id="bg"></canvas><div class="vig"></div><canvas id="cf"></canvas>
 <div id="prog"><span>Dados</span><span>Análise</span><span>Padrões</span><span>Decisões</span></div>
 
 <section class="stage on" id="intro">
@@ -107,7 +124,17 @@ h2{font-size:clamp(1.8rem,4vw,3.6rem);font-weight:800}
     <div class="ring"><svg viewBox="0 0 160 160"><circle class="t" cx="80" cy="80" r="70"/><circle class="f" id="ringf" cx="80" cy="80" r="70"/></svg><div><span id="conf">0%</span><small>confiança</small></div></div>
     <div><p class="sub" style="max-width:none">Para o perfil <b id="dp" style="color:var(--c3)"></b>, o sistema recomenda:</p><h3 id="rec"></h3><p class="sub" id="why" style="max-width:none"></p></div>
   </div>
-  <button class="btn" id="toEnd">Finalizar</button>
+  <button class="btn" id="toEnd">Ir para o desafio</button>
+</section>
+
+<section class="stage" id="challenge">
+  <h2 id="ch-t">Desafio final: descubra o padrão!</h2>
+  <p class="sub" id="ch-s"></p>
+  <div class="tbar"><i id="tm"></i></div>
+  <div class="bars" id="bars"></div>
+  <div class="opts" id="ch-o"></div>
+  <div id="prize"><div class="ch">🍫</div><div class="code" id="code"></div><p class="sub">Mostre esta tela para a equipe do stand e retire seu chocolate.</p></div>
+  <button class="btn" id="chNext" style="display:none">Continuar</button>
 </section>
 
 <section class="stage" id="end">
@@ -129,7 +156,7 @@ const hs=s=>[...s].reduce((a,c)=>(a*31+c.charCodeAt(0))%997,7);
 let ans={},idle;
 
 /* ---------- navegação ---------- */
-function go(id){document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('on',s.id===id));$('#prog').classList.toggle('on',['collect','lab','decision'].includes(id));clearTimeout(idle);if(id==='end')idle=setTimeout(restart,40000)}
+function go(id){document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('on',s.id===id));$('#prog').classList.toggle('on',['collect','lab','decision'].includes(id));clearTimeout(idle);if(id==='end'||id==='challenge')idle=setTimeout(restart,60000)}
 function step(n){document.querySelectorAll('#prog span').forEach((s,i)=>{s.className=i<n?'done':i===n?'on':''})}
 
 /* ---------- 1. coleta ---------- */
@@ -182,9 +209,37 @@ function decide(){
   $('#conf').textContent='0%';$('#ringf').style.strokeDashoffset=440;
   setTimeout(()=>{$('#ringf').style.strokeDashoffset=440*(1-conf/100);let n=0;const iv=setInterval(()=>{n+=2;if(n>=conf){n=conf;clearInterval(iv)}$('#conf').textContent=n+'%'},40)},500);
 }
-function restart(){go('intro')}
+function restart(){clearTimeout(tm);go('intro')}
 
-$('#go').onclick=start;$('#toDec').onclick=decide;$('#toEnd').onclick=()=>go('end');$('#again').onclick=restart;
+/* ---------- desafio final: acertou, ganha chocolate ---------- */
+const CH=[{d:[2,3,5,8,12],a:17,o:[16,17,18,20]},{d:[1,4,9,16,25],a:36,o:[30,34,36,49]},{d:[2,6,12,20,30],a:42,o:[36,40,42,44]},{d:[2,3,5,7,11],a:13,o:[12,13,14,15]},{d:[10,5,20,10,40],a:20,o:[10,20,60,80]},{d:[1,2,4,7,11,16],a:22,o:[20,21,22,23]},{d:[3,5,9,17,33],a:65,o:[50,57,65,66]}];
+let tries=0,order=[],tm;
+function startChallenge(){tries=0;order=[...CH].sort(()=>Math.random()-.5);
+  ['#bars','#ch-o','.tbar'].forEach(q=>$(q).style.display='');$('#prize').style.display='none';$('#chNext').style.display='none';
+  $('#ch-t').textContent='Desafio final: descubra o padrão!';go('challenge');nextCh()}
+function nextCh(){
+  const c=order[tries],mx=Math.max(...c.d,c.a);clearTimeout(tm);
+  $('#ch-s').textContent=(tries?'Quase! Mais uma chance, com outro padrão. ':'')+'Qual número completa a sequência? Você tem 30 segundos. Acerte e ganhe um chocolate 🍫';
+  $('#bars').innerHTML=c.d.map(v=>`<div><i style="height:${Math.max(8,v/mx*100)}%"><b>${v}</b></i></div>`).join('')+'<div class="q"><i style="height:100%"><b>?</b></i></div>';
+  const o=$('#ch-o');o.className='opts';o.innerHTML='';
+  [...c.o].sort(()=>Math.random()-.5).forEach(v=>{const b=document.createElement('button');b.className='opt';b.textContent=v;b.onclick=()=>answer(b,v===c.a);o.appendChild(b)});
+  const t=$('#tm');t.style.transition='none';t.style.width='100%';void t.offsetWidth;t.style.transition='width 30s linear';t.style.width='0';tm=setTimeout(()=>answer(null,false),30000)}
+async function answer(b,ok){
+  clearTimeout(tm);$('#ch-o').classList.add('lock');if(b)b.classList.add(ok?'pick':'bad');await sleep(1000);
+  if(ok){win();return}
+  tries++;tries<2?nextCh():lose()}
+function endCh(){['#bars','#ch-o','.tbar'].forEach(q=>$(q).style.display='none');$('#chNext').style.display='block'}
+function win(){endCh();$('#ch-t').textContent='Você descobriu o padrão!';$('#ch-s').textContent='Isso é Ciência de Dados na prática.';
+  $('#code').textContent='CHOC-'+(1000+Math.floor(Math.random()*9000));$('#prize').style.display='flex';confetti()}
+function lose(){endCh();$('#ch-t').textContent='Boa tentativa!';$('#ch-s').textContent='Errar também gera dados, e é assim que se aprende.'}
+const cf=$('#cf'),fx=cf.getContext('2d');let CF=[];
+function confetti(){cf.width=innerWidth;cf.height=innerHeight;
+  CF=Array.from({length:180},()=>({x:Math.random()*cf.width,y:-20-Math.random()*cf.height*.5,vx:(Math.random()-.5)*3,vy:2+Math.random()*4,r:4+Math.random()*6,c:COL[Math.floor(Math.random()*4)],a:Math.random()*6}));cfLoop()}
+function cfLoop(){fx.clearRect(0,0,cf.width,cf.height);
+  CF.forEach(q=>{q.x+=q.vx;q.y+=q.vy;q.a+=.1;fx.fillStyle=q.c;fx.save();fx.translate(q.x,q.y);fx.rotate(q.a);fx.fillRect(-q.r,-q.r/2,q.r*2,q.r);fx.restore()});
+  CF=CF.filter(q=>q.y<cf.height+20);CF.length?requestAnimationFrame(cfLoop):fx.clearRect(0,0,cf.width,cf.height)}
+
+$('#go').onclick=start;$('#toDec').onclick=decide;$('#toEnd').onclick=startChallenge;$('#chNext').onclick=()=>go('end');$('#again').onclick=restart;
 
 /* ---------- fundo: rede de dados + números ---------- */
 const bg=$('#bg'),bx=bg.getContext('2d');let BW,BH,N=[],F=[];
