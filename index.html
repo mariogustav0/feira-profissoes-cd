@@ -73,6 +73,30 @@ h2{font-size:clamp(1.8rem,4vw,3.6rem);font-weight:800}
 #prize{display:none;flex-direction:column;align-items:center;gap:1.5vh}
 #prize .ch{font-size:clamp(5rem,12vw,10rem);animation:bounce 1s infinite alternate;filter:drop-shadow(0 0 30px #ffc94a)}
 #prize .code{font-family:Consolas,monospace;font-size:clamp(1.4rem,2.6vw,2.4rem);padding:.4em 1.2em;border:3px dashed var(--c4);border-radius:16px;color:var(--c4)}
+#challenge{gap:1.2vh;padding-top:8vh}
+#challenge .bars{height:24vh}
+#ch-s{max-width:60ch}
+.bars i{transition:height .25s}
+.rd{display:flex;gap:1.2vw}
+.rd span{width:18px;height:18px;border-radius:50%;border:2px solid var(--c1)}
+.rd .cur{background:var(--c1);box-shadow:0 0 14px var(--c1)}
+.rd .ok{background:#4dff9a;border-color:#4dff9a}
+.rd .no{background:var(--c3);border-color:var(--c3)}
+#ctl{display:none;flex-direction:column;align-items:center;gap:1.4vh}
+.meta{font-size:clamp(1.1rem,2vw,1.9rem);color:var(--mut)}
+.meta b{color:var(--c4);font-size:1.4em}
+.ctr{display:flex;align-items:center;gap:2vw}
+.ctr .opt{font-size:clamp(2rem,4vw,3.6rem);padding:.5vh 2.6vw}
+.ctr span{font-size:clamp(3rem,6vw,5.5rem);font-weight:800;color:var(--c4);min-width:2.2ch;font-variant-numeric:tabular-nums}
+.ctr span.pick{color:#4dff9a}.ctr span.bad{color:var(--c3)}
+#field{display:none;position:relative;width:min(90vw,760px);height:32vh;border:1px solid #19f0ff33;border-radius:22px;background:#050a1a99}
+.dot{position:absolute;width:clamp(26px,4.2vh,44px);aspect-ratio:1;border-radius:50%;border:0;background:var(--c1);box-shadow:0 0 14px var(--c1);cursor:pointer;transform:translate(-50%,-50%);transition:.2s}
+.dot:hover{transform:translate(-50%,-50%) scale(1.25)}
+.dot.pick{background:#4dff9a;box-shadow:0 0 30px #4dff9a}.dot.bad{background:var(--c3);box-shadow:0 0 30px var(--c3)}
+.dd{width:auto;aspect-ratio:auto;border-radius:14px;padding:.5em .9em;font:inherit;font-weight:800;font-size:clamp(1rem,2vw,1.8rem);color:#04060f;animation:popin .25s}
+@keyframes popin{from{transform:translate(-50%,-50%) scale(0)}}
+.nums{display:flex;gap:2.4vw}
+.nums span{font-size:clamp(3rem,7vw,6rem);font-weight:800;color:var(--c1);padding:.1em .5em;border:2px solid #19f0ff55;border-radius:20px;background:#0e1a3acc;text-shadow:0 0 20px var(--c1)}
 #cf{position:fixed;inset:0;pointer-events:none;z-index:20}
 @keyframes grow{from{transform:scaleY(0)}}
 @keyframes shake{25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
@@ -128,12 +152,15 @@ h2{font-size:clamp(1.8rem,4vw,3.6rem);font-weight:800}
 </section>
 
 <section class="stage" id="challenge">
-  <h2 id="ch-t">Desafio final: descubra o padrão!</h2>
+  <h2 id="ch-t">Desafio final</h2>
+  <div class="rd" id="rd"></div>
   <p class="sub" id="ch-s"></p>
   <div class="tbar"><i id="tm"></i></div>
   <div class="bars" id="bars"></div>
   <div class="opts" id="ch-o"></div>
-  <div id="prize"><div class="ch">🍫</div><div class="code" id="code"></div><p class="sub">Mostre esta tela para a equipe do stand e retire seu chocolate.</p></div>
+  <div id="ctl"></div>
+  <div id="field"></div>
+  <div id="prize"><div class="ch">🍬</div><div class="code" id="code"></div><p class="sub">Mostre esta tela para a equipe do stand e retire sua balinha.</p></div>
   <button class="btn" id="chNext" style="display:none">Continuar</button>
 </section>
 
@@ -156,7 +183,7 @@ const hs=s=>[...s].reduce((a,c)=>(a*31+c.charCodeAt(0))%997,7);
 let ans={},idle;
 
 /* ---------- navegação ---------- */
-function go(id){document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('on',s.id===id));$('#prog').classList.toggle('on',['collect','lab','decision'].includes(id));clearTimeout(idle);if(id==='end'||id==='challenge')idle=setTimeout(restart,60000)}
+function go(id){document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('on',s.id===id));$('#prog').classList.toggle('on',['collect','lab','decision'].includes(id));clearTimeout(idle);if(id==='end'||id==='challenge')idle=setTimeout(restart,id==='end'?45000:150000)}
 function step(n){document.querySelectorAll('#prog span').forEach((s,i)=>{s.className=i<n?'done':i===n?'on':''})}
 
 /* ---------- 1. coleta ---------- */
@@ -209,29 +236,62 @@ function decide(){
   $('#conf').textContent='0%';$('#ringf').style.strokeDashoffset=440;
   setTimeout(()=>{$('#ringf').style.strokeDashoffset=440*(1-conf/100);let n=0;const iv=setInterval(()=>{n+=2;if(n>=conf){n=conf;clearInterval(iv)}$('#conf').textContent=n+'%'},40)},500);
 }
-function restart(){clearTimeout(tm);go('intro')}
+function restart(){clearTimeout(tm);clearInterval(sp);go('intro')}
 
-/* ---------- desafio final: acertou, ganha chocolate ---------- */
+/* ---------- desafio final: 3 rodadas, 3 jogos diferentes; 2 acertos = balinha ---------- */
 const CH=[{d:[2,3,5,8,12],a:17,o:[16,17,18,20]},{d:[1,4,9,16,25],a:36,o:[30,34,36,49]},{d:[2,6,12,20,30],a:42,o:[36,40,42,44]},{d:[2,3,5,7,11],a:13,o:[12,13,14,15]},{d:[10,5,20,10,40],a:20,o:[10,20,60,80]},{d:[1,2,4,7,11,16],a:22,o:[20,21,22,23]},{d:[3,5,9,17,33],a:65,o:[50,57,65,66]}];
-let tries=0,order=[],tm;
-function startChallenge(){tries=0;order=[...CH].sort(()=>Math.random()-.5);
-  ['#bars','#ch-o','.tbar'].forEach(q=>$(q).style.display='');$('#prize').style.display='none';$('#chNext').style.display='none';
-  $('#ch-t').textContent='Desafio final: descubra o padrão!';go('challenge');nextCh()}
-function nextCh(){
-  const c=order[tries],mx=Math.max(...c.d,c.a);clearTimeout(tm);
-  $('#ch-s').textContent=(tries?'Quase! Mais uma chance, com outro padrão. ':'')+'Qual número completa a sequência? Você tem 30 segundos. Acerte e ganhe um chocolate 🍫';
-  $('#bars').innerHTML=c.d.map(v=>`<div><i style="height:${Math.max(8,v/mx*100)}%"><b>${v}</b></i></div>`).join('')+'<div class="q"><i style="height:100%"><b>?</b></i></div>';
+const GE={'#bars':'flex','#ch-o':'grid','#ctl':'flex','#field':'block'};
+const show=(...a)=>{for(const q in GE)$(q).style.display=a.includes(q)?GE[q]:'none'};
+const WIN=1,NR=2;let rounds=[],ri=0,res=[],tm,sp,bag=[],lock=false;
+const paint=()=>{$('#rd').innerHTML=[...Array(NR).keys()].map(i=>'<span class="'+(i<res.length?(res[i]?'ok':'no'):i===ri?'cur':'')+'"></span>').join('')};
+function startChallenge(){rounds=['seq','avg','cln'].sort(()=>Math.random()-.5).slice(0,NR);ri=0;res=[];lock=false;
+  $('#prize').style.display='none';$('#chNext').style.display='none';$('.tbar').style.display='block';go('challenge');nextRound()}
+function nextRound(){
+  const t=rounds[ri],I={seq:['Complete a sequência','Qual número vem a seguir? Achar padrões é o dia a dia de quem trabalha com dados.'],avg:['Calcule a média','Faça a conta na mão e toque na resposta certa. Você tem 40 segundos!'],cln:['Limpe os dados','Toque nos dados corrompidos (NaN, null, ###) antes que sumam. Não toque nos números bons!']}[t];
+  $('#ch-t').textContent='Rodada '+(ri+1)+' de '+NR+': '+I[0];$('#ch-s').textContent=I[1];paint();
+  ({seq:seqRound,avg:avgRound,cln:cleanRound})[t]();const sec=t==='avg'?40:30;
+  const b=$('#tm');b.style.transition='none';b.style.width='100%';void b.offsetWidth;b.style.transition='width '+sec+'s linear';b.style.width='0';
+  clearTimeout(tm);tm=setTimeout(()=>finish(false,null),sec*1000)}
+async function finish(ok,el){
+  if(lock)return;lock=true;clearTimeout(tm);clearInterval(sp);if(el)el.classList.add(ok?'pick':'bad');
+  res.push(ok);paint();await sleep(1100);lock=false;
+  ++ri<NR?nextRound():end()}
+/* jogo 1: sequência */
+function seqRound(){
+  if(!bag.length)bag=[...CH].sort(()=>Math.random()-.5);const c=bag.pop(),mx=Math.max(...c.d,c.a);
+  $('#bars').innerHTML=c.d.map(v=>'<div><i style="height:'+Math.max(8,v/mx*100)+'%"><b>'+v+'</b></i></div>').join('')+'<div class="q"><i style="height:100%"><b>?</b></i></div>';
   const o=$('#ch-o');o.className='opts';o.innerHTML='';
-  [...c.o].sort(()=>Math.random()-.5).forEach(v=>{const b=document.createElement('button');b.className='opt';b.textContent=v;b.onclick=()=>answer(b,v===c.a);o.appendChild(b)});
-  const t=$('#tm');t.style.transition='none';t.style.width='100%';void t.offsetWidth;t.style.transition='width 30s linear';t.style.width='0';tm=setTimeout(()=>answer(null,false),30000)}
-async function answer(b,ok){
-  clearTimeout(tm);$('#ch-o').classList.add('lock');if(b)b.classList.add(ok?'pick':'bad');await sleep(1000);
-  if(ok){win();return}
-  tries++;tries<2?nextCh():lose()}
-function endCh(){['#bars','#ch-o','.tbar'].forEach(q=>$(q).style.display='none');$('#chNext').style.display='block'}
-function win(){endCh();$('#ch-t').textContent='Você descobriu o padrão!';$('#ch-s').textContent='Isso é Ciência de Dados na prática.';
-  $('#code').textContent='CHOC-'+(1000+Math.floor(Math.random()*9000));$('#prize').style.display='flex';confetti()}
-function lose(){endCh();$('#ch-t').textContent='Boa tentativa!';$('#ch-s').textContent='Errar também gera dados, e é assim que se aprende.'}
+  [...c.o].sort(()=>Math.random()-.5).forEach(v=>{const b=document.createElement('button');b.className='opt';b.textContent=v;b.onclick=()=>finish(v===c.a,b);o.appendChild(b)});
+  show('#bars','#ch-o')}
+/* jogo 2: média calculada na mão (sem dicas) */
+function avgRound(){
+  let m,v;do{m=6+Math.floor(Math.random()*15);const a=m+Math.floor(Math.random()*11)-5,b=m+Math.floor(Math.random()*11)-5;v=[a,b,3*m-a-b]}
+  while(v.some(n=>n<1)||new Set(v).size<3);
+  const pool=[m-2,m-1,m+1,m+2,Math.max(...v)].filter((n,i,r)=>n>0&&n!==m&&r.indexOf(n)===i).sort(()=>Math.random()-.5).slice(0,3);
+  $('#ctl').innerHTML='<div class="nums">'+v.map(n=>'<span>'+n+'</span>').join('')+'</div><div class="meta">Qual é a <b>média</b> destes três valores?</div>';
+  const o=$('#ch-o');o.className='opts';o.innerHTML='';
+  [m,...pool].sort(()=>Math.random()-.5).forEach(n=>{const b=document.createElement('button');b.className='opt';b.textContent=n;b.onclick=()=>finish(n===m,b);o.appendChild(b)});
+  show('#ctl','#ch-o')}
+/* jogo 3: limpeza de dados (toque nos dados corrompidos) */
+function cleanRound(){
+  let hit=0,err=0;const G=8+Math.floor(Math.random()*5);const BAD=['NaN','null','###','??','undefined'],f=$('#field');f.innerHTML='';
+  $('#ctl').innerHTML='<div class="meta">Dados corrompidos removidos: <b id="hh">0</b> / '+G+' &nbsp;·&nbsp; Erros: <b id="ee">0</b> / 3</div>';
+  const spawn=()=>{
+    if(lock)return;
+    const bad=Math.random()<.65,d=document.createElement('button');
+    d.className='dot dd';d.textContent=bad?BAD[Math.floor(Math.random()*BAD.length)]:String(10+Math.floor(Math.random()*90));
+    d.style.left=(14+Math.random()*72)+'%';d.style.top=(16+Math.random()*68)+'%';
+    d.onclick=()=>{if(lock||d.dataset.x)return;d.dataset.x=1;
+      if(bad){hit++;d.classList.add('pick');$('#hh').textContent=hit;if(hit>=G)finish(true,null)}
+      else{err++;d.classList.add('bad');$('#ee').textContent=err;if(err>=3)finish(false,null)}
+      setTimeout(()=>d.remove(),250)};
+    f.appendChild(d);setTimeout(()=>d.remove(),1600)};
+  clearInterval(sp);sp=setInterval(spawn,650);spawn();show('#ctl','#field')}
+function end(){
+  show();$('.tbar').style.display='none';$('#chNext').style.display='block';const n=res.filter(Boolean).length;
+  if(n>=WIN){$('#ch-t').textContent='Você acertou '+n+' de '+NR+'!';$('#ch-s').textContent='Padrões, médias e outliers: isso é Ciência de Dados na prática.';
+    $('#code').textContent='DOCE-'+(1000+Math.floor(Math.random()*9000));$('#prize').style.display='flex';confetti()}
+  else{$('#ch-t').textContent='Você acertou '+n+' de '+NR+'.';$('#ch-s').textContent='Precisava acertar '+WIN+' para ganhar a balinha, mas errar também gera dados, e é assim que se aprende.'}}
 const cf=$('#cf'),fx=cf.getContext('2d');let CF=[];
 function confetti(){cf.width=innerWidth;cf.height=innerHeight;
   CF=Array.from({length:180},()=>({x:Math.random()*cf.width,y:-20-Math.random()*cf.height*.5,vx:(Math.random()-.5)*3,vy:2+Math.random()*4,r:4+Math.random()*6,c:COL[Math.floor(Math.random()*4)],a:Math.random()*6}));cfLoop()}
